@@ -1,0 +1,36 @@
+--- a/dict/png-extended.dict	2026-05-10 19:43:02
++++ b/dict/png-extended.dict	2026-05-10 19:43:35
+@@ -99,3 +99,16 @@
+ palette_size_8="\x00\x00\x00\x18"
+ palette_size_16="\x00\x00\x00\x30"
+ palette_size_256="\x00\x00\x03\x00"
++
++# === 9. HL Round 2 additions — chunk types from pngrutil.c review + APNG/extension chunks ===
++chunk_acTL="acTL"
++chunk_fcTL="fcTL"
++chunk_fdAT="fdAT"
++chunk_eXIf="eXIf"
++chunk_orNT="orNT"
++iccp_srgb="sRGB IEC61966-2.1"
++iccp_disp="Display"
++deflate_stored="\x01"
++deflate_fixed="\x02"
++deflate_dynamic="\x03"
++phys_meter="\x01"
+--- a/src/harness.c	2026-05-10 19:43:02
++++ b/src/harness.c	2026-05-10 19:43:24
+@@ -132,6 +132,14 @@
+     png_set_strip_16(png_ptr);
+     png_set_gray_to_rgb(png_ptr);
+     png_set_packing(png_ptr);
++    /* HL Round 2 additions — uncovered transformation branches identified from Round 1 plot_data
++     * + libpng pngrtran.c source review. Each opens a distinct code region. */
++    png_set_palette_to_rgb(png_ptr);
++    png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
++    png_set_swap(png_ptr);
++    png_set_swap_alpha(png_ptr);
++    png_set_invert_alpha(png_ptr);
++    png_set_invert_mono(png_ptr);
+     png_read_update_info(png_ptr, info_ptr);
+ 
+     /* Phase 3 — IDAT defilter pipeline. Allocate row buffers based on post-transformation rowbytes

@@ -1,0 +1,114 @@
+# PNG fuzzing dictionary — extends AFLplusplus/dictionaries/png.dict.
+#
+# Formal view (Q3): each entry is a *terminal symbol* of the PNG grammar. Without a dictionary,
+# AFL++'s havoc-mode mutations would have to discover a 4-byte chunk type tag like "IHDR" by
+# random bit flips (1 in 2^32 per byte position). The dictionary inserts these tokens directly
+# during mutation, lifting the search from byte-level to token-level.
+#
+# Categories:
+#   1. PNG signature (the 8-byte magic — without it libpng aborts at byte 0)
+#   2. Critical chunk tags (must appear in every valid PNG)
+#   3. Ancillary chunk tags (optional, but each unlocks a different parser branch)
+#   4. zlib stream magic (IDAT and zTXt are zlib-compressed; first byte selects compression level)
+#   5. Filter type tags (per-scanline filter byte: 0..4)
+#   6. PNG IHDR field-value primitives (bit_depth, color_type, interlace constants)
+
+# === 1. PNG signature ===
+sig_png="\x89PNG\x0d\x0a\x1a\x0a"
+
+# === 2. Critical chunks ===
+chunk_IHDR="IHDR"
+chunk_PLTE="PLTE"
+chunk_IDAT="IDAT"
+chunk_IEND="IEND"
+
+# === 3. Ancillary chunks (lowercase first letter = ancillary) ===
+chunk_tRNS="tRNS"
+chunk_gAMA="gAMA"
+chunk_cHRM="cHRM"
+chunk_sRGB="sRGB"
+chunk_iCCP="iCCP"
+chunk_tEXt="tEXt"
+chunk_zTXt="zTXt"
+chunk_iTXt="iTXt"
+chunk_bKGD="bKGD"
+chunk_pHYs="pHYs"
+chunk_sBIT="sBIT"
+chunk_sPLT="sPLT"
+chunk_hIST="hIST"
+chunk_tIME="tIME"
+chunk_oFFs="oFFs"
+chunk_pCAL="pCAL"
+chunk_sCAL="sCAL"
+chunk_gIFg="gIFg"
+chunk_gIFt="gIFt"
+chunk_gIFx="gIFx"
+chunk_fRAc="fRAc"
+
+# === 4. zlib stream magic (first byte = CMF, second = FLG checksum-included). The three common
+#        combinations correspond to "default compression", "best compression", "no compression". ===
+zlib_default="\x78\x9c"
+zlib_best="\x78\xda"
+zlib_fast="\x78\x01"
+zlib_no_compression="\x78\x5e"
+
+# === 5. PNG filter types (1-byte prefix on every scanline) ===
+filter_none="\x00"
+filter_sub="\x01"
+filter_up="\x02"
+filter_average="\x03"
+filter_paeth="\x04"
+
+# === 6. IHDR field primitives ===
+# bit_depth: legal values are 1, 2, 4, 8, 16 (constraints depend on color_type)
+bd_1="\x01"
+bd_2="\x02"
+bd_4="\x04"
+bd_8="\x08"
+bd_16="\x10"
+# color_type: 0=gray, 2=RGB, 3=palette, 4=gray+alpha, 6=RGBA
+ct_gray="\x00"
+ct_rgb="\x02"
+ct_palette="\x03"
+ct_gray_alpha="\x04"
+ct_rgba="\x06"
+# Compression method: only 0 is defined (zlib deflate)
+cm_deflate="\x00"
+# Filter method: only 0 is defined (adaptive filtering with 5 basic types)
+fm_adaptive="\x00"
+# Interlace: 0=none, 1=Adam7
+il_none="\x00"
+il_adam7="\x01"
+
+# === 7. Common field-edge constants useful in length fields and dimensions ===
+zero4="\x00\x00\x00\x00"
+one4="\x00\x00\x00\x01"
+small4="\x00\x00\x00\x10"
+mid4="\x00\x00\x10\x00"
+big4="\x00\xff\xff\xff"
+max4="\xff\xff\xff\xff"
+# IHDR fixed length is always 0x0d (13 bytes)
+len_ihdr="\x00\x00\x00\x0d"
+# IEND fixed length is 0
+len_iend="\x00\x00\x00\x00"
+
+# === 8. Common color-palette indices and small-palette boundaries (CVE-2015-8126 region) ===
+palette_size_1="\x00\x00\x00\x03"
+palette_size_2="\x00\x00\x00\x06"
+palette_size_4="\x00\x00\x00\x0c"
+palette_size_8="\x00\x00\x00\x18"
+palette_size_16="\x00\x00\x00\x30"
+palette_size_256="\x00\x00\x03\x00"
+
+# === 9. HL Round 2 additions — chunk types from pngrutil.c review + APNG/extension chunks ===
+chunk_acTL="acTL"
+chunk_fcTL="fcTL"
+chunk_fdAT="fdAT"
+chunk_eXIf="eXIf"
+chunk_orNT="orNT"
+iccp_srgb="sRGB IEC61966-2.1"
+iccp_disp="Display"
+deflate_stored="\x01"
+deflate_fixed="\x02"
+deflate_dynamic="\x03"
+phys_meter="\x01"

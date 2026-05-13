@@ -1,0 +1,1 @@
+duration=836s edges_found=747 corpus=239 overall_slope=0.183/s tail_slope=0.054/s verdict=still climbing

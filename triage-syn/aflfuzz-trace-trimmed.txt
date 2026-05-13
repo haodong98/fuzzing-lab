@@ -1,0 +1,18 @@
+==7686==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60300000005f at pc 0x55555558d833 bp 0x7ffffffc3820 sp 0x7ffffffc2fe8
+WRITE of size 32 at 0x60300000005f thread T0
+    #0 0x55555558d832 in __interceptor_memcpy (/work/build/png_fuzz_syn+0x39832) (BuildId: e50d378137982ba2784698e90ebe41be9ec7fae2)
+    #1 0x55555564ff03 in png_combine_row /work/build/libpng-instrumented/pngrutil.c
+    #2 0x555555639bd8 in png_read_row /work/build/libpng-instrumented/pngread.c:822:10
+    #3 0x55555563a28d in png_read_image /work/build/libpng-instrumented/pngread.c:940:10
+    #4 0x555555631a8b in main /work/src/harness.c:176:5
+    #5 0x7fffff499d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #6 0x7fffff499e3f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e3f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #7 0x5555555734a4 in _start (/work/build/png_fuzz_syn+0x1f4a4) (BuildId: e50d378137982ba2784698e90ebe41be9ec7fae2)
+
+0x60300000005f is located 0 bytes to the right of 31-byte region [0x603000000040,0x60300000005f)
+allocated by thread T0 here:
+    #0 0x5555555f62ee in __interceptor_malloc (/work/build/png_fuzz_syn+0xa22ee) (BuildId: e50d378137982ba2784698e90ebe41be9ec7fae2)
+    #1 0x5555556317fd in main /work/src/harness.c:167:30
+    #2 0x7fffff499d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/work/build/png_fuzz_syn+0x39832) (BuildId: e50d378137982ba2784698e90ebe41be9ec7fae2) in __interceptor_memcpy

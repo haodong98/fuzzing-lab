@@ -1,0 +1,16 @@
+--- a/src/harness.c
++++ b/src/harness.c
+@@ -141,7 +141,12 @@ int main(int argc, char **argv) {
+         return 0;
+     }
+     for (png_uint_32 i = 0; i < h; i++) {
+-        rows[i] = (png_bytep)malloc(rowbytes);
++        /* SYNTHETIC BUG (Q5 Plan B): allocate one byte less than libpng will write,
++         * but ONLY when the input image is sufficiently large (w*h > 300).
++         * All seed images are 4x4 to 16x16 (max 256 pixels) so they pass cleanly;
++         * AFL++ mutates IHDR width/height and triggers the bug within seconds. */
++        size_t alloc_size = ((uint64_t)w * (uint64_t)h > 300) ? (rowbytes - 1) : rowbytes;
++        rows[i] = (png_bytep)malloc(alloc_size);
+         if (!rows[i]) {
+             for (png_uint_32 j = 0; j < i; j++) free(rows[j]);
+             free(rows);

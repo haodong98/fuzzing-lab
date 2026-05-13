@@ -1,0 +1,52 @@
+NOTE: CRC in the file is 0x30303030, change to 0x0b27094e
+=================================================================
+==36223==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60300000005f at pc 0x55555558d833 bp 0x7ffffffc37c0 sp 0x7ffffffc2f88
+WRITE of size 32 at 0x60300000005f thread T0
+    #0 0x55555558d832 in __interceptor_memcpy (/work/build/png_fuzz_syn+0x39832) (BuildId: 4051bcbf8f31409d22c8d01f7df71d627ef370bd)
+    #1 0x55555564fe23 in png_combine_row /work/build/libpng-instrumented/pngrutil.c
+    #2 0x555555639af8 in png_read_row /work/build/libpng-instrumented/pngread.c:822:10
+    #3 0x55555563a1ad in png_read_image /work/build/libpng-instrumented/pngread.c:940:10
+    #4 0x555555631939 in main /work/src/harness.c:173:5
+    #5 0x7fffff499d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #6 0x7fffff499e3f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e3f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #7 0x5555555734a4 in _start (/work/build/png_fuzz_syn+0x1f4a4) (BuildId: 4051bcbf8f31409d22c8d01f7df71d627ef370bd)
+
+0x60300000005f is located 0 bytes to the right of 31-byte region [0x603000000040,0x60300000005f)
+allocated by thread T0 here:
+    #0 0x5555555f62ee in __interceptor_malloc (/work/build/png_fuzz_syn+0xa22ee) (BuildId: 4051bcbf8f31409d22c8d01f7df71d627ef370bd)
+    #1 0x5555556317ce in main /work/src/harness.c:164:30
+    #2 0x7fffff499d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/work/build/png_fuzz_syn+0x39832) (BuildId: 4051bcbf8f31409d22c8d01f7df71d627ef370bd) in __interceptor_memcpy
+Shadow bytes around the buggy address:
+  0x0c067fff7fb0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c067fff7fc0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c067fff7fd0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c067fff7fe0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c067fff7ff0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x0c067fff8000: fa fa 00 00 00 fa fa fa 00 00 00[07]fa fa 00 00
+  0x0c067fff8010: 00 07 fa fa 00 00 00 07 fa fa 00 00 00 07 fa fa
+  0x0c067fff8020: 00 00 00 07 fa fa 00 00 00 07 fa fa 00 00 00 07
+  0x0c067fff8030: fa fa 00 00 00 07 fa fa 00 00 00 07 fa fa 00 00
+  0x0c067fff8040: 00 07 fa fa 00 00 00 07 fa fa 00 00 00 07 fa fa
+  0x0c067fff8050: 00 00 00 07 fa fa 00 00 00 07 fa fa 00 00 00 07
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==36223==ABORTING

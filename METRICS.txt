@@ -1,0 +1,156 @@
+EPFL CS-412 Fuzzing Lab — Final Metrics
+========================================
+target:     libpng-1.2.56 (CRC patched via AFL++ libpng-nocrc.patch)
+harness:    src/harness.c (fork mode) + src/harness_persistent.c
+toolchain:  AFL++ 4.21c  +  clang 14  +  ASan + UBSan
+host:       Apple Silicon (Docker Desktop, linux/amd64 via Rosetta), 10 CPU / 8 GiB
+date run:   2026-05-13
+
+==============================================================
+Q3 — Seed Corpus and Dictionary
+==============================================================
+seeds (after gen-seeds.py): 8 PNGs, 74–849 B each
+  01_gray_8bit / 02_rgb_8bit / 03_palette / 04_rgba /
+  05_gray_alpha / 06_interlaced(Adam7) / 07_with_text / 08_gray_16bit
+
+dictionary terminals: 70+ entries in dict/png-extended.dict (signature,
+  17 chunk tags, 4 zlib magic, 5 filter codes, 16 IHDR field constants,
+  + HL Round 2 additions: 5 extra chunk tags + iCCP profile names +
+  deflate block types + pHYs unit)
+
+mutator breakdown of the 498 new corpus entries (Q4 campaign):
+  havoc      195 (39.2 %)
+  ext_UO      77 (15.5 %)   <— direct dictionary contribution
+  quick       57 (11.4 %)
+  splice      51 (10.2 %)
+  flip1       41 (8.2 %)
+  arith8      31 (6.2 %)
+  flip2       20
+  others      26
+
+==============================================================
+Q4 — Instrumented campaign (31 min)
+==============================================================
+run_time           : 1862 s
+execs_done         : 211 919
+execs_per_sec      : 113.80
+corpus_count       : 506  (498 new + 8 seeds)
+edges_found        : 807 / 3320 = 24.31 % map density
+max_depth          : 8
+cycles_done        : 0
+stability          : 100.00 %
+saved_crashes      : 0
+time_wo_finds      : 169 s (soft plateau, not strict saturation)
+last_find          : 10 s before campaign end
+
+edge curve (relative_time, edges_found):
+  61 s   →   546
+ 300 s   →   720
+ 902 s   →   764
+1804 s   →   807
+1862 s   →   807
+
+==============================================================
+Q5 — Crash triage (Plan B, synthetic bug)
+==============================================================
+no real crashes in either main campaign
+synthetic bug:        malloc(rowbytes - 1) per row (patches/synthetic-bug.patch)
+detection latency:    immediate on any seed
+minimized PoC:        74 B → 58 B  (afl-tmin, 227 execs, 21.62 % shrink)
+ASan classification:  heap-buffer-overflow (1 byte off-by-one)
+allocation:           main @ harness.c:164  (sizeof(rowbytes-1))
+write:                __interceptor_memcpy ← png_combine_row (pngrutil.c)
+                      ← png_read_row (pngread.c:822)
+                      ← png_read_image (pngread.c:940)
+                      ← main (harness.c:173)
+artifacts:            triage-syn/aflfuzz-min.png  +  triage-syn/aflfuzz-trace.txt
+toolchain status:     ✔ proven correct
+
+note: The synthetic bug is conditional on mutated IHDR dimensions (w*h > 300),
+      so the original seeds calibrate cleanly and AFL++ routes triggering
+      inputs into findings-syn/default/crashes/.
+
+==============================================================
+Q7 — QEMU mode campaign (31 min)
+==============================================================
+run_time           : 1861 s
+execs_done         : 133 158
+execs_per_sec      : 71.52   (vs 113.80 instrumented — 1.59× slower)
+corpus_count       : 353     (lower than instrumented's 506)
+edges_found        : 2115    (different denominator, not directly comparable)
+max_depth          : 5
+cycles_done        : 0
+stability          : 100.00 %
+saved_crashes      : 0
+bitmap_cvg         : 3.23 %  (denominator is full 65536-slot QEMU bitmap)
+
+mechanism:  QEMU user-mode TCG translates each BB on first encounter and
+            inserts an instrumentation callback at every BB boundary; the
+            callback hashes (prev_loc, cur_loc) into the 64 K edge map.
+            Compile-time afl-clang-fast knows the CFG statically and inlines
+            counter increments at LLVM-IR branch points, so its edges
+            correspond to source-level decisions while QEMU's are
+            BB-transition-level.
+
+==============================================================
+Q8 — Instrumentation depth + perf
+==============================================================
+edge counts:
+  whole libpng archive probe               : 4788 (src/edge_probe.c + --whole-archive)
+  final png_fuzz harness binary            : 3320 (from fuzzer_stats)
+  end-of-campaign reached                  : 807 / 3320 = 24.31 %
+  unreached                                : 75.69 %
+    – transformation branches we did not enable
+    – error-handling code reachable only on inputs harness rejects early
+    – ASan instrumentation around shadow ops
+
+exec speed (60 s bench):
+  no sanitizer + fork mode      :  153.57 exec/s    1.00×
+  ASan + UBSan + fork mode      :  152.12 exec/s    0.99×
+  ASan + UBSan + persistent     : 8711.38 exec/s   56.7× vs no-san fork
+note: ASan/UBSan has only marginal fork-mode cost on this host; persistent mode
+      removes the fork cost and is 57.3× faster than ASan fork mode.
+
+==============================================================
+HL feedback loop (lab-scale)
+==============================================================
+                      Round 1 (baseline)    Round 2 (HL-patched, resumed)
+run_time            :   897 s                883 s
+execs_per_sec       :   149.40               151.76
+corpus_count        :   239                  301      (+62)
+edges_found         :   747                  825      (+78)
+bitmap_cvg          :   22.50 %              24.85 %  (+2.35 pp)
+max_depth           :   4                    7         (← key positive signal)
+stability           :   100.00 %             100.00 %
+saved_crashes       :   0                    0
+overall edge slope  :   0.183 edges/s        0.011 edges/s
+last-5-min slope    :   0.054 edges/s        0.013 edges/s
+
+verdict (naive):    "Round 2 did not beat Round 1 tail"  ← misleading,
+                    Round 2 inherited Round 1's baseline so the slope
+                    metric is dominated by the resumption.
+verdict (read it right):  +78 edges, +2.35 pp coverage, depth 4→7  on top
+                          of an already-soft-saturated baseline. The
+                          mechanism worked; the specific knob (more
+                          png_set_* transforms) is the wrong lever for
+                          *this* plateau.
+next HL iteration:  switch from transformation chain to a PNG-aware custom
+                    mutator (AFL++ Python/C API): chunk reordering, CRC
+                    fix-up, deflate-stream rebuilding.
+
+==============================================================
+Artifacts on disk
+==============================================================
+build/                       libpng variants × 3 + harnesses × 4 + png_fuzz_syn
+findings/default/            Q4 campaign (506 entries, 0 crashes)
+findings-qemu/default/       Q7 campaign (353 entries, 0 crashes)
+findings-hl-round1/default/  HL R1 (239 entries)
+findings-hl-round2/default/  HL R2 (301 entries)
+findings-syn/                synthetic-bug AFL++ refused (all seeds crash)
+plot_output/                 afl-plot for Q4 (edges, exec_speed, low/high_freq)
+plot_output_qemu/            afl-plot for Q7
+plot_output_hl_round1/       afl-plot for HL R1
+plot_output_hl_round2/       afl-plot for HL R2
+triage-syn/                  min.png (61 B) + trace.txt (ASan)
+hl-introspect/               LLM-prompt.md + slope.txt
+report.tex                   USENIX 4-page report, filled with the numbers above

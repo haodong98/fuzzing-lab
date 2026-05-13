@@ -1,0 +1,10 @@
+.DS_Store
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.log
+*.aux
+*.out
+texput.log
